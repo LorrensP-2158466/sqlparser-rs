@@ -5343,6 +5343,15 @@ impl<'a> Parser<'a> {
             None
         };
 
+        // postgress allows PARTITION BY
+        let partition_by = if dialect_of!(self is PostgreSqlDialect |  GenericDialect )
+            && self.parse_keywords(&[Keyword::PARTITION, Keyword::BY])
+        {
+            Some(Box::new(self.parse_expr()?))
+        } else {
+            None
+        };
+
         let big_query_config = if dialect_of!(self is BigQueryDialect | GenericDialect) {
             self.parse_optional_big_query_create_table_config()?
         } else {
@@ -5432,7 +5441,7 @@ impl<'a> Parser<'a> {
             .collation(collation)
             .on_commit(on_commit)
             .on_cluster(on_cluster)
-            .partition_by(big_query_config.partition_by)
+            .partition_by(partition_by.or(big_query_config.partition_by))
             .cluster_by(big_query_config.cluster_by)
             .options(big_query_config.options)
             .primary_key(primary_key)
